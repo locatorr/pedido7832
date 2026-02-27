@@ -3,7 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ================= CONFIGURAÇÃO =================
     // Teresópolis de Goiás -> Congonhas (Viagem aprox. 17 horas)
     const TEMPO_VIAGEM_TOTAL_HORAS = 17;
-    const CHAVE_INICIO = 'inicio_viagem_tere_mg';
+    // Mudei o nome da chave para forçar o navegador a esquecer a parada antiga
+    const CHAVE_INICIO = 'inicio_viagem_mg_1h'; 
 
     // ================= ROTAS =================
     const ROTAS = {
@@ -13,7 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // COORDENADAS [Longitude, Latitude]
             start:    [-49.0489, -16.2833], // Origem: Teresópolis de Goiás - GO
-            end:      [-43.8582, -20.4996]  // Destino: Congonhas - MG
+            end:      [-43.8582, -20.4996], // Destino: Congonhas - MG
+            
+            // Adiciona 1 hora ao progresso (simula que já saiu)
+            offsetHoras: 1 
         }
     };
 
@@ -34,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function verificarCodigo() {
         const input = document.getElementById('access-code');
-        // Pega apenas os números (caso a pessoa digite com o traço)
         const code = input.value.replace(/[^0-9]/g, '');
         const errorMsg = document.getElementById('error-msg');
 
@@ -46,9 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         localStorage.setItem('codigoAtivo', code);
         
-        // Zera o cronômetro para ele começar a viagem do zero agora
+        // Zera o cronômetro local com a nova chave
         const keyStorage = CHAVE_INICIO + '_' + code;
-        localStorage.setItem(keyStorage, Date.now());
+        if (!localStorage.getItem(keyStorage)) {
+            localStorage.setItem(keyStorage, Date.now());
+        }
 
         carregarInterface(code);
     }
@@ -71,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true;
         }
 
-        // Passamos apenas start e end (rota direta normal)
         buscarRotaReal(rotaAtual.start, rotaAtual.end).then(() => {
             const overlay = document.getElementById('login-overlay');
             const infoCard = document.getElementById('info-card');
@@ -104,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Busca a rota direta entre Teresópolis e Congonhas
     async function buscarRotaReal(start, end) {
         const url = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`;
         const data = await fetch(url).then(r => r.json());
@@ -120,7 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
             attribution: '&copy; CartoDB', maxZoom: 18
         }).addTo(map);
 
-        // Desenha a rota completa
         polyline = L.polyline(fullRoute, {
             color: '#2563eb',
             weight: 5,
@@ -128,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
             lineJoin: 'round'
         }).addTo(map);
 
-        // Ícone do Caminhão
         const truckIcon = L.divIcon({
             className: 'custom-marker',
             html: '<div class="car-icon" style="font-size:35px;">🚛</div>',
@@ -139,13 +140,13 @@ document.addEventListener('DOMContentLoaded', () => {
         carMarker = L.marker(fullRoute[0], { icon: truckIcon, zIndexOffset: 1000 }).addTo(map);
         L.marker(fullRoute[fullRoute.length - 1]).addTo(map).bindPopup(`<b>Destino:</b> ${rotaAtual.destinoNome}`);
 
-        // Grava o horário que começou a viagem
         const codigoAtivo = localStorage.getItem('codigoAtivo');
         const keyStorage = CHAVE_INICIO + '_' + codigoAtivo;
         if (!localStorage.getItem(keyStorage)) {
             localStorage.setItem(keyStorage, Date.now());
         }
 
+        if (loopInterval) clearInterval(loopInterval);
         loopInterval = setInterval(atualizarPosicao, 1000);
         atualizarPosicao();
     }
@@ -156,21 +157,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const codigoAtivo = localStorage.getItem('codigoAtivo');
         const keyStorage = CHAVE_INICIO + '_' + codigoAtivo;
         
-        const inicio = parseInt(localStorage.getItem(keyStorage));
+        let inicio = parseInt(localStorage.getItem(keyStorage));
+        if (!inicio) {
+            inicio = Date.now();
+            localStorage.setItem(keyStorage, inicio);
+        }
+
         const agora = Date.now();
+        
+        // Cálculo do tempo decorrido
+        const tempoDecorridoMs = agora - inicio;
+        
+        // Adiciona 1 hora ao tempo (offset)
+        const tempoComOffset = tempoDecorridoMs + (rotaAtual.offsetHoras * 3600000);
+        const tempoTotalMs = TEMPO_VIAGEM_TOTAL_HORAS * 3600000;
 
-        // Calcula a porcentagem do progresso
-        let progresso = (agora - inicio) / (TEMPO_VIAGEM_TOTAL_HORAS * 3600000);
-        progresso = Math.min(Math.max(progresso, 0), 1); // Trava entre 0 e 1 (0% a 100%)
+        let progresso = tempoComOffset / tempoTotalMs;
+        progresso = Math.min(Math.max(progresso, 0), 1); 
 
-        // Acha a coordenada atual
         const idx = Math.floor(progresso * (fullRoute.length - 1));
         const pos = fullRoute[idx] || fullRoute[fullRoute.length - 1];
 
         carMarker.setLatLng(pos);
         desenharLinhaRestante(pos, idx);
 
-        // Atualiza a plaquinha
         const badge = document.getElementById('time-badge');
         if (badge) {
             if (progresso >= 1) {
@@ -178,8 +188,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 badge.style.background = "#d1fae5";
                 badge.style.color = "#065f46";
             } else {
-                const h = ((1 - progresso) * TEMPO_VIAGEM_TOTAL_HORAS).toFixed(1);
-                badge.innerText = `EM TRÂNSITO • FALTA ${h}h`;
+                // Calcula as horas restantes subtraindo o offset
+                const msRestantes = tempoTotalMs - tempoComOffset;
+                const horasRestantes = (msRestantes / 3600000).toFixed(1);
+                
+                badge.innerText = `EM TRÂNSITO • FALTA ${horasRestantes}h`;
                 badge.style.background = "#e3f2fd";
                 badge.style.color = "#1976d2";
             }
