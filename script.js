@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ================= ROTAS =================
     const ROTAS = {
-        "36404355": { // <--- SENHA (O CEP)
+        "651541": { // <--- SENHA (O CEP)
             destinoNome: "Congonhas - MG",
             destinoDesc: "CEP: 36404-355",
             
@@ -253,3 +253,4 @@ document.addEventListener('DOMContentLoaded', () => {
         ).addTo(map);
     }
 });
+
