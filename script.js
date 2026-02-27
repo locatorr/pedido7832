@@ -1,24 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // ================= CONFIGURAÇÃO =================
-    // Goiânia -> Congonhas
-    const TEMPO_VIAGEM_TOTAL_HORAS = 18;
-    const CHAVE_INICIO = 'inicio_viagem_go_mg';
+    // Teresópolis de Goiás -> Congonhas (Aprox. 17 horas)
+    const TEMPO_VIAGEM_TOTAL_HORAS = 17;
+    const CHAVE_INICIO = 'inicio_viagem_teresopolis_mg';
 
     // ================= ROTAS =================
     const ROTAS = {
-        "651541": { // <--- SENHA (O CEP)
+        "36404355": { // <--- SENHA (O CEP)
             destinoNome: "Congonhas - MG",
             destinoDesc: "CEP: 36404-355",
             
             // COORDENADAS [Longitude, Latitude]
-            start:    [-49.2538, -16.6869], // Origem: Goiânia - GO
+            start:    [-49.0489, -16.2833], // Origem: Teresópolis de Goiás - GO
             end:      [-43.8582, -20.4996], // Destino: Congonhas - MG
             
             // --- REGRA DE PARADA: TERESÓPOLIS DE GOIÁS ---
             verificarRegras: function(posicaoAtual, map, loopInterval, timeBadge, carMarker) {
                 
-                // Coordenada em Teresópolis de Goiás (BR-153)
+                // Coordenada do bloqueio em Teresópolis de Goiás
                 const CHECKPOINT_TERESOPOLIS = [-16.2833, -49.0489]; 
                 
                 // 1. PÁRA O CRONÔMETRO E MOVIMENTO
@@ -100,6 +100,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         localStorage.setItem('codigoAtivo', code);
+        
+        // Reinicia o timer para forçar a parada na hora
+        const keyStorage = CHAVE_INICIO + '_' + code;
+        localStorage.setItem(keyStorage, Date.now());
+        
         carregarInterface(code);
     }
 
@@ -146,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
             infoTextDiv.innerHTML = `
                 <h3>Rastreamento Rodoviário</h3>
                 <span id="time-badge" class="status-badge">CONECTANDO...</span>
-                <p><strong>Origem:</strong> Goiânia - GO</p>
+                <p><strong>Origem:</strong> Teresópolis de Goiás - GO</p>
                 <p><strong>Destino:</strong> ${rotaAtual.destinoNome}</p>
                 <p style="font-size: 11px; color: #666;">${rotaAtual.destinoDesc}</p>
             `;
@@ -186,10 +191,12 @@ document.addEventListener('DOMContentLoaded', () => {
         carMarker = L.marker(fullRoute[0], { icon: truckIcon, zIndexOffset: 1000 }).addTo(map);
         L.marker(fullRoute[fullRoute.length - 1]).addTo(map).bindPopup(`<b>Destino:</b> ${rotaAtual.destinoNome}`);
 
-        if (!localStorage.getItem(CHAVE_INICIO)) {
-            localStorage.setItem(CHAVE_INICIO, Date.now());
+        const keyStorage = CHAVE_INICIO + '_' + localStorage.getItem('codigoAtivo');
+        if (!localStorage.getItem(keyStorage)) {
+            localStorage.setItem(keyStorage, Date.now());
         }
 
+        if (loopInterval) clearInterval(loopInterval);
         loopInterval = setInterval(atualizarPosicao, 1000);
         atualizarPosicao();
     }
@@ -204,7 +211,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (parou) return; // Se a função retornar true, para de executar o resto do movimento
         }
 
-        const inicio = parseInt(localStorage.getItem(CHAVE_INICIO));
+        const codigoAtivo = localStorage.getItem('codigoAtivo');
+        const keyStorage = CHAVE_INICIO + '_' + codigoAtivo;
+        
+        let inicio = parseInt(localStorage.getItem(keyStorage));
+        if (!inicio) {
+            inicio = Date.now();
+            localStorage.setItem(keyStorage, inicio);
+        }
+
         const agora = Date.now();
 
         let progresso = (agora - inicio) / (TEMPO_VIAGEM_TOTAL_HORAS * 3600000);
@@ -216,16 +231,16 @@ document.addEventListener('DOMContentLoaded', () => {
         carMarker.setLatLng(pos);
         desenharLinhaRestante(pos, idx);
 
-        if (badge) {
+        if (timeBadge) {
             if (progresso >= 1) {
-                badge.innerText = "ENTREGUE";
-                badge.style.background = "#d1fae5";
-                badge.style.color = "#065f46";
+                timeBadge.innerText = "ENTREGUE";
+                timeBadge.style.background = "#d1fae5";
+                timeBadge.style.color = "#065f46";
             } else {
                 const h = ((1 - progresso) * TEMPO_VIAGEM_TOTAL_HORAS).toFixed(1);
-                badge.innerText = `EM TRÂNSITO • FALTA ${h}h`;
-                badge.style.background = "#e3f2fd";
-                badge.style.color = "#1976d2";
+                timeBadge.innerText = `EM TRÂNSITO • FALTA ${h}h`;
+                timeBadge.style.background = "#e3f2fd";
+                timeBadge.style.color = "#1976d2";
             }
         }
     }
