@@ -1,23 +1,21 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // ================= CONFIGURAÇÃO =================
-    // Teresópolis de Goiás -> Congonhas (Viagem aprox. 17 horas)
-    const TEMPO_VIAGEM_TOTAL_HORAS = 17;
-    // Mudei o nome da chave para forçar o navegador a esquecer a parada antiga
+    // Sinop - MT -> Itaboraí - RJ (Viagem aprox. 3 dias)
+    const TEMPO_VIAGEM_TOTAL_HORAS = 72;
     const CHAVE_INICIO = 'inicio_viagem_mg_1h'; 
 
     // ================= ROTAS =================
     const ROTAS = {
         "651541": { // <--- SENHA (O CEP)
-            destinoNome: "Congonhas - MG",
-            destinoDesc: "CEP: 36404-355",
+            destinoNome: "Itaboraí - RJ",
+            destinoDesc: "CEP: 24878-055",
             
             // COORDENADAS [Longitude, Latitude]
-            start:    [-49.0489, -16.2833], // Origem: Teresópolis de Goiás - GO
-            end:      [-43.8582, -20.4996], // Destino: Congonhas - MG
+            start:    [-55.5050, -11.8604], // Origem: Sinop - MT
+            end:      [-42.8597, -22.7448], // Destino: Itaboraí - RJ
             
-            // Adiciona 1 hora ao progresso (simula que já saiu)
-            offsetHoras: 1 
+            offsetHoras: 0 
         }
     };
 
@@ -49,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         localStorage.setItem('codigoAtivo', code);
         
-        // Zera o cronômetro local com a nova chave
         const keyStorage = CHAVE_INICIO + '_' + code;
         if (!localStorage.getItem(keyStorage)) {
             localStorage.setItem(keyStorage, Date.now());
@@ -101,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
             infoTextDiv.innerHTML = `
                 <h3>Rastreamento Rodoviário</h3>
                 <span id="time-badge" class="status-badge">CONECTANDO...</span>
-                <p><strong>Origem:</strong> Teresópolis de Goiás - GO</p>
+                <p><strong>Origem:</strong> Sinop - MT</p>
                 <p><strong>Destino:</strong> ${rotaAtual.destinoNome}</p>
                 <p style="font-size: 11px; color: #666;">${rotaAtual.destinoDesc}</p>
             `;
@@ -165,10 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const agora = Date.now();
         
-        // Cálculo do tempo decorrido
         const tempoDecorridoMs = agora - inicio;
-        
-        // Adiciona 1 hora ao tempo (offset)
         const tempoComOffset = tempoDecorridoMs + (rotaAtual.offsetHoras * 3600000);
         const tempoTotalMs = TEMPO_VIAGEM_TOTAL_HORAS * 3600000;
 
@@ -188,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 badge.style.background = "#d1fae5";
                 badge.style.color = "#065f46";
             } else {
-                // Calcula as horas restantes subtraindo o offset
                 const msRestantes = tempoTotalMs - tempoComOffset;
                 const horasRestantes = (msRestantes / 3600000).toFixed(1);
                 
@@ -206,4 +199,5 @@ document.addEventListener('DOMContentLoaded', () => {
             { dashArray: '10,10', color: '#2563eb', weight: 5, lineJoin: 'round' }
         ).addTo(map);
     }
+
 });
