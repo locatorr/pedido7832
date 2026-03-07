@@ -1,19 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // ================= CONFIGURAÇÃO =================
-    // Sinop - MT -> Itaboraí - RJ (Viagem aprox. 3 dias)
     const TEMPO_VIAGEM_TOTAL_HORAS = 72;
     const CHAVE_INICIO = 'inicio_viagem_mg_1h'; 
 
+    // ===== LOCAL DA PARADA PRF (JALES) =====
+    const PARADA_PRF = {
+        ativo: true,
+        coordenada: [-20.2686, -50.5459], // Jales - SP
+        mensagem: "🚔 PARADO PELA PRF • Falta de documentação"
+    };
+
     // ================= ROTAS =================
     const ROTAS = {
-        "651541": { // <--- SENHA (O CEP)
+        "651541": {
             destinoNome: "Itaboraí - RJ",
             destinoDesc: "CEP: 24878-055",
             
-            // COORDENADAS [Longitude, Latitude]
-            start:    [-55.5050, -11.8604], // Origem: Sinop - MT
-            end:      [-42.8597, -22.7448], // Destino: Itaboraí - RJ
+            start: [-55.5050, -11.8604], // Sinop
+            end: [-42.8597, -22.7448], // Itaboraí
             
             offsetHoras: 0 
         }
@@ -24,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let fullRoute = [];
     let rotaAtual = null;
     let loopInterval = null;
+    let marcadorPRF = null;
 
     // ================= INIT =================
     const btnLogin = document.getElementById('btn-login');
@@ -82,13 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             atualizarTextoInfo();
             iniciarMapa();
-        }).catch(err => {
-            console.error(err);
-            alert("Erro de conexão com o satélite de rota.");
-            if(btn) {
-                btn.innerText = "Tentar Novamente";
-                btn.disabled = false;
-            }
         });
     }
 
@@ -112,9 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function iniciarMapa() {
-        if (map) return;
 
-        map = L.map('map', { zoomControl: false }).setView(fullRoute[0], 6);
+        map = L.map('map', { zoomControl: false }).setView([-20.2686, -50.5459], 7);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; CartoDB', maxZoom: 18
@@ -123,81 +121,41 @@ document.addEventListener('DOMContentLoaded', () => {
         polyline = L.polyline(fullRoute, {
             color: '#2563eb',
             weight: 5,
-            dashArray: '10,10',
-            lineJoin: 'round'
+            dashArray: '10,10'
         }).addTo(map);
 
+        // ===== ICONE DO CAMINHÃO =====
         const truckIcon = L.divIcon({
             className: 'custom-marker',
-            html: '<div class="car-icon" style="font-size:35px;">🚛</div>',
+            html: '<div style="font-size:35px;">🚛</div>',
             iconSize: [40, 40],
             iconAnchor: [20, 20]
         });
-        
-        carMarker = L.marker(fullRoute[0], { icon: truckIcon, zIndexOffset: 1000 }).addTo(map);
-        L.marker(fullRoute[fullRoute.length - 1]).addTo(map).bindPopup(`<b>Destino:</b> ${rotaAtual.destinoNome}`);
 
-        const codigoAtivo = localStorage.getItem('codigoAtivo');
-        const keyStorage = CHAVE_INICIO + '_' + codigoAtivo;
-        if (!localStorage.getItem(keyStorage)) {
-            localStorage.setItem(keyStorage, Date.now());
+        carMarker = L.marker(PARADA_PRF.coordenada, { icon: truckIcon }).addTo(map);
+
+        // ===== MARCADOR DA PRF =====
+        if (PARADA_PRF.ativo) {
+
+            const prfIcon = L.divIcon({
+                html: '<div style="font-size:30px;">🚔</div>',
+                iconSize: [30,30],
+                className: ''
+            });
+
+            marcadorPRF = L.marker(PARADA_PRF.coordenada, { icon: prfIcon })
+            .addTo(map)
+            .bindPopup("<b>PRF - Polícia Rodoviária Federal</b><br>Veículo parado por falta de documentação")
+            .openPopup();
         }
-
-        if (loopInterval) clearInterval(loopInterval);
-        loopInterval = setInterval(atualizarPosicao, 1000);
-        atualizarPosicao();
-    }
-
-    function atualizarPosicao() {
-        if (fullRoute.length === 0 || !rotaAtual) return;
-
-        const codigoAtivo = localStorage.getItem('codigoAtivo');
-        const keyStorage = CHAVE_INICIO + '_' + codigoAtivo;
-        
-        let inicio = parseInt(localStorage.getItem(keyStorage));
-        if (!inicio) {
-            inicio = Date.now();
-            localStorage.setItem(keyStorage, inicio);
-        }
-
-        const agora = Date.now();
-        
-        const tempoDecorridoMs = agora - inicio;
-        const tempoComOffset = tempoDecorridoMs + (rotaAtual.offsetHoras * 3600000);
-        const tempoTotalMs = TEMPO_VIAGEM_TOTAL_HORAS * 3600000;
-
-        let progresso = tempoComOffset / tempoTotalMs;
-        progresso = Math.min(Math.max(progresso, 0), 1); 
-
-        const idx = Math.floor(progresso * (fullRoute.length - 1));
-        const pos = fullRoute[idx] || fullRoute[fullRoute.length - 1];
-
-        carMarker.setLatLng(pos);
-        desenharLinhaRestante(pos, idx);
 
         const badge = document.getElementById('time-badge');
         if (badge) {
-            if (progresso >= 1) {
-                badge.innerText = "ENTREGUE";
-                badge.style.background = "#d1fae5";
-                badge.style.color = "#065f46";
-            } else {
-                const msRestantes = tempoTotalMs - tempoComOffset;
-                const horasRestantes = (msRestantes / 3600000).toFixed(1);
-                
-                badge.innerText = `EM TRÂNSITO • FALTA ${horasRestantes}h`;
-                badge.style.background = "#e3f2fd";
-                badge.style.color = "#1976d2";
-            }
+            badge.innerText = "🚔 PARADO NA PRF";
+            badge.style.background = "#fee2e2";
+            badge.style.color = "#991b1b";
         }
     }
 
-    function desenharLinhaRestante(pos, idx) {
-        if(polyline) map.removeLayer(polyline);
-        polyline = L.polyline(
-            [pos, ...fullRoute.slice(idx + 1)],
-            { dashArray: '10,10', color: '#2563eb', weight: 5, lineJoin: 'round' }
-        ).addTo(map);
-    }
-
 });
+
