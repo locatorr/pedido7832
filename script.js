@@ -4,10 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const TEMPO_VIAGEM_TOTAL_HORAS = 72;
     const CHAVE_INICIO = 'inicio_viagem_mg_1h'; 
 
-    // ===== LOCAL DA PARADA PRF (JALES) =====
+    // ===== LOCAL DA PARADA PRF (PORTO VELHO) =====
     const PARADA_PRF = {
         ativo: true,
-        coordenada: [-20.2686, -50.5459], // Jales - SP
+        coordenada: [-8.7619, -63.9039], // Porto Velho - RO
         mensagem: "🚔 PARADO PELA PRF • Falta de documentação"
     };
 
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function iniciarMapa() {
 
-        map = L.map('map', { zoomControl: false }).setView([-20.2686, -50.5459], 7);
+        map = L.map('map', { zoomControl: false }).setView([-8.7619, -63.9039], 6);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; CartoDB', maxZoom: 18
@@ -124,15 +124,15 @@ document.addEventListener('DOMContentLoaded', () => {
             dashArray: '10,10'
         }).addTo(map);
 
-        // ===== ICONE DO CAMINHÃO =====
-        const truckIcon = L.divIcon({
+        // ===== ICONE DA MOTO =====
+        const motoIcon = L.divIcon({
             className: 'custom-marker',
-            html: '<div style="font-size:35px;">🚛</div>',
+            html: '<div style="font-size:35px;">🏍️</div>',
             iconSize: [40, 40],
             iconAnchor: [20, 20]
         });
 
-        carMarker = L.marker(PARADA_PRF.coordenada, { icon: truckIcon }).addTo(map);
+        carMarker = L.marker(PARADA_PRF.coordenada, { icon: motoIcon }).addTo(map);
 
         // ===== MARCADOR DA PRF =====
         if (PARADA_PRF.ativo) {
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             marcadorPRF = L.marker(PARADA_PRF.coordenada, { icon: prfIcon })
             .addTo(map)
-            .bindPopup("<b>PRF - Polícia Rodoviária Federal</b><br>Veículo parado por falta de documentação")
+            .bindPopup("<b>PRF - Polícia Rodoviária Federal</b><br>Moto parada por falta de documentação")
             .openPopup();
         }
 
@@ -158,4 +158,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
