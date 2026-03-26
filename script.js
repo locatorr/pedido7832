@@ -6,16 +6,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const ROTAS = {
         "651541": {
             destinoNome: "Itapiratins - TO",
-            destinoDesc: "Destino Final",
 
-            start: [-44.8839, -20.1453], // Divinópolis
-            end: [-47.6090, -8.3936],   // Itapiratins
+            // ✅ FORMATO CORRETO: [LAT, LNG]
+            start: [-20.1453, -44.8839], // Divinópolis
+            end: [-8.3936, -47.6090],   // Itapiratins
         }
     };
 
     let map, polyline, carMarker;
     let fullRoute = [];
-    let rotaAtual = null;
 
     const btnLogin = document.getElementById('btn-login');
     if (btnLogin) btnLogin.addEventListener('click', verificarCodigo);
@@ -24,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function verificarCodigo() {
 
-        const code = document.getElementById('access-code').value.replace(/[^0-9]/g, '');
+        const code = document.getElementById('access-code').value.replace(/\D/g, '');
 
         if (!ROTAS[code]) {
             alert("Código inválido");
@@ -39,39 +38,59 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem(key, Date.now());
         }
 
-        carregarInterface(code);
+        carregar(code);
     }
 
     function verificarSessaoSalva() {
-        const codigo = localStorage.getItem('codigoAtivo');
-        if (codigo && ROTAS[codigo]) carregarInterface(codigo);
+        const code = localStorage.getItem('codigoAtivo');
+        if (code && ROTAS[code]) carregar(code);
     }
 
-    function carregarInterface(codigo) {
+    function carregar(code) {
 
-        rotaAtual = ROTAS[codigo];
+        const rota = ROTAS[code];
 
-        buscarRotaReal(rotaAtual.start, rotaAtual.end)
-            .then(() => {
-                iniciarMapa();
-            })
-            .catch(() => {
-                alert("Erro ao calcular rota");
-            });
+        buscarRotaReal(rota.start, rota.end).then(() => {
+            iniciarMapa();
+        });
+
     }
 
     async function buscarRotaReal(start, end) {
 
-        const url = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`;
+        try {
+            // 🔥 OSRM usa [LNG, LAT]
+            const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
 
-        const res = await fetch(url);
-        const data = await res.json();
+            const res = await fetch(url);
+            const data = await res.json();
 
-        if (!data.routes || !data.routes.length) {
-            throw new Error("Rota inválida");
+            if (!data.routes || !data.routes.length) throw "erro";
+
+            fullRoute = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+
+        } catch (e) {
+
+            console.warn("API falhou, usando linha reta");
+
+            // 🔥 fallback SEM ERRO (linha reta)
+            fullRoute = gerarLinhaReta(start, end, 500);
+        }
+    }
+
+    function gerarLinhaReta(start, end, steps) {
+
+        const rota = [];
+
+        for (let i = 0; i <= steps; i++) {
+
+            const lat = start[0] + (end[0] - start[0]) * (i / steps);
+            const lng = start[1] + (end[1] - start[1]) * (i / steps);
+
+            rota.push([lat, lng]);
         }
 
-        fullRoute = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        return rota;
     }
 
     function iniciarMapa() {
@@ -83,13 +102,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }).addTo(map);
 
         polyline = L.polyline(fullRoute, {
-            color: '#2563eb',
-            weight: 5
+            color: 'blue',
+            weight: 4
         }).addTo(map);
 
         const icon = L.divIcon({
-            html: '<div style="font-size:30px;">🚚</div>',
-            className: ''
+            html: '🚚',
+            className: '',
+            iconSize: [30, 30]
         });
 
         carMarker = L.marker(fullRoute[0], { icon }).addTo(map);
@@ -106,10 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setInterval(() => {
 
-            const agora = Date.now();
-            let progresso = (agora - inicio) / tempoTotal;
-
-            // 🔥 trava no máximo 1 (chegar no destino)
+            let progresso = (Date.now() - inicio) / tempoTotal;
             if (progresso > 1) progresso = 1;
 
             const index = Math.floor(progresso * (fullRoute.length - 1));
@@ -118,9 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!pos) return;
 
             carMarker.setLatLng(pos);
-
-            // movimento suave de câmera
-            map.setView(pos, map.getZoom(), { animate: true });
+            map.setView(pos, map.getZoom());
 
         }, 1000);
     }
