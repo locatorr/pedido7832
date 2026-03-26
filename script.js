@@ -1,23 +1,21 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // ================= CONFIGURAÇÃO =================
-    const TEMPO_VIAGEM_TOTAL_HORAS = 72;
+    const TEMPO_VIAGEM_TOTAL_HORAS = 48; // 2 dias
     const CHAVE_INICIO = 'inicio_viagem_mg_1h';
-
-    // ===== LOCAL ONDE A MOTO ESTAVA PARADA =====
-    const PARADA_PRF = {
-        ativo: true,
-        coordenada: [-8.7619, -63.9039] // Porto Velho
-    };
 
     // ================= ROTAS =================
     const ROTAS = {
         "651541": {
-            destinoNome: "Itaboraí - RJ",
-            destinoDesc: "CEP: 24878-055",
+            destinoNome: "Itapiratins - TO",
+            destinoDesc: "Destino Final",
 
-            start: [-55.5050, -11.8604], // Sinop
-            end: [-42.8597, -22.7448],   // Itaboraí
+            // Divinópolis - MG
+            start: [-44.8839, -20.1453],
+
+            // Itapiratins - TO
+            end: [-47.6090, -8.3936],
+
             offsetHoras: 0
         }
     };
@@ -54,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const keyStorage = CHAVE_INICIO + '_' + code;
 
+        // 🔥 SALVA APENAS UMA VEZ (tempo real absoluto)
         if (!localStorage.getItem(keyStorage)) {
             localStorage.setItem(keyStorage, Date.now());
         }
@@ -66,8 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const codigo = localStorage.getItem('codigoAtivo');
 
         if (codigo && ROTAS[codigo]) {
-            const input = document.getElementById('access-code');
-            if (input) input.value = codigo;
+            carregarInterface(codigo);
         }
     }
 
@@ -95,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
             infoTextDiv.innerHTML = `
                 <h3>Rastreamento Rodoviário</h3>
                 <span id="time-badge" class="status-badge">EM MOVIMENTO</span>
-                <p><strong>Origem:</strong> Sinop - MT</p>
+                <p><strong>Origem:</strong> Divinópolis - MG</p>
                 <p><strong>Destino:</strong> ${rotaAtual.destinoNome}</p>
                 <p style="font-size:11px;color:#666;">${rotaAtual.destinoDesc}</p>
             `;
@@ -110,13 +108,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         fullRoute = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
 
-        // descobrir ponto mais próximo da PRF
-        indiceInicio = encontrarIndiceMaisProximo(PARADA_PRF.coordenada);
+        indiceInicio = 0; // começa do início real
     }
 
     function iniciarMapa() {
 
-        map = L.map('map', { zoomControl: false }).setView(PARADA_PRF.coordenada, 6);
+        map = L.map('map', { zoomControl: false }).setView(fullRoute[0], 5);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; CartoDB',
@@ -125,77 +122,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
         polyline = L.polyline(fullRoute, {
             color: '#2563eb',
-            weight: 5,
-            dashArray: '10,10'
+            weight: 5
         }).addTo(map);
 
-        const motoIcon = L.divIcon({
+        const caminhaoIcon = L.divIcon({
             className: 'custom-marker',
-            html: '<div style="font-size:35px;">🏍️</div>',
+            html: '<div style="font-size:35px;">🚚</div>',
             iconSize: [40,40],
             iconAnchor: [20,20]
         });
 
-        carMarker = L.marker(fullRoute[indiceInicio], { icon: motoIcon }).addTo(map);
+        carMarker = L.marker(fullRoute[0], { icon: caminhaoIcon }).addTo(map);
 
         iniciarMovimento();
     }
 
-    // ================= MOVIMENTO =================
+    // ================= MOVIMENTO REAL =================
 
     function iniciarMovimento() {
 
-        const tempoTotal = TEMPO_VIAGEM_TOTAL_HORAS * 3600000;
+        const keyStorage = CHAVE_INICIO + '_' + localStorage.getItem('codigoAtivo');
+        const inicioSalvo = parseInt(localStorage.getItem(keyStorage));
 
-        const inicio = Date.now();
+        const tempoTotal = TEMPO_VIAGEM_TOTAL_HORAS * 3600000;
 
         loopInterval = setInterval(() => {
 
             const agora = Date.now();
 
-            const progresso = (agora - inicio) / tempoTotal;
+            // 🔥 cálculo baseado no tempo real (não reinicia)
+            const progresso = (agora - inicioSalvo) / tempoTotal;
 
             if (progresso >= 1) {
+                carMarker.setLatLng(fullRoute[fullRoute.length - 1]);
                 clearInterval(loopInterval);
                 return;
             }
 
-            const posIndex = indiceInicio + Math.floor(progresso * (fullRoute.length - indiceInicio));
-
+            const posIndex = Math.floor(progresso * (fullRoute.length - 1));
             const pos = fullRoute[posIndex];
 
             carMarker.setLatLng(pos);
-
             map.panTo(pos);
 
         }, 2000);
     }
 
-    // ================= AUX =================
-
-    function encontrarIndiceMaisProximo(coord) {
-
-        let menor = Infinity;
-        let indice = 0;
-
-        fullRoute.forEach((p, i) => {
-
-            const d = Math.sqrt(
-                Math.pow(p[0] - coord[0], 2) +
-                Math.pow(p[1] - coord[1], 2)
-            );
-
-            if (d < menor) {
-                menor = d;
-                indice = i;
-            }
-
-        });
-
-        return indice;
-    }
-
 });
-
-
-
