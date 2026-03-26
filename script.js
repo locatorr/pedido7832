@@ -1,8 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // ================= CONFIGURAÇÃO =================
-    const TEMPO_VIAGEM_TOTAL_HORAS = 48; // 2 dias
+    const TEMPO_VIAGEM_TOTAL_HORAS = 48;
     const CHAVE_INICIO = 'inicio_viagem_mg_1h';
+
+    // ================= PARADA PRF =================
+    const PARADA_PRF = {
+        ativo: true,
+        coordenada: [-19.9, -44.0], // próximo de Divinópolis
+        nome: "PRF - MG",
+        motivo: "Veículo retido por falta de nota fiscal"
+    };
 
     // ================= ROTAS =================
     const ROTAS = {
@@ -10,13 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
             destinoNome: "Itapiratins - TO",
             destinoDesc: "Destino Final",
 
-            // Divinópolis - MG
-            start: [-44.8839, -20.1453],
-
-            // Itapiratins - TO
-            end: [-47.6090, -8.3936],
-
-            offsetHoras: 0
+            start: [-44.8839, -20.1453], // Divinópolis
+            end: [-47.6090, -8.3936],   // Itapiratins
         }
     };
 
@@ -24,20 +27,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let map, polyline, carMarker;
     let fullRoute = [];
     let rotaAtual = null;
-    let loopInterval = null;
-    let indiceInicio = 0;
 
     // ================= INIT =================
     const btnLogin = document.getElementById('btn-login');
-
-    if (btnLogin) {
-        btnLogin.addEventListener('click', verificarCodigo);
-    }
+    if (btnLogin) btnLogin.addEventListener('click', verificarCodigo);
 
     verificarSessaoSalva();
 
-    // ================= FUNÇÕES =================
-
+    // ================= LOGIN =================
     function verificarCodigo() {
 
         const input = document.getElementById('access-code');
@@ -50,25 +47,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         localStorage.setItem('codigoAtivo', code);
 
-        const keyStorage = CHAVE_INICIO + '_' + code;
-
-        // 🔥 SALVA APENAS UMA VEZ (tempo real absoluto)
-        if (!localStorage.getItem(keyStorage)) {
-            localStorage.setItem(keyStorage, Date.now());
+        const key = CHAVE_INICIO + '_' + code;
+        if (!localStorage.getItem(key)) {
+            localStorage.setItem(key, Date.now());
         }
 
         carregarInterface(code);
     }
 
     function verificarSessaoSalva() {
-
         const codigo = localStorage.getItem('codigoAtivo');
-
         if (codigo && ROTAS[codigo]) {
             carregarInterface(codigo);
         }
     }
 
+    // ================= INTERFACE =================
     function carregarInterface(codigo) {
 
         rotaAtual = ROTAS[codigo];
@@ -80,7 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             atualizarTextoInfo();
             iniciarMapa();
-
         });
     }
 
@@ -92,83 +85,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
             infoTextDiv.innerHTML = `
                 <h3>Rastreamento Rodoviário</h3>
-                <span id="time-badge" class="status-badge">EM MOVIMENTO</span>
+                <span class="status-badge" style="background:red;">
+                    VEÍCULO RETIDO
+                </span>
                 <p><strong>Origem:</strong> Divinópolis - MG</p>
                 <p><strong>Destino:</strong> ${rotaAtual.destinoNome}</p>
-                <p style="font-size:11px;color:#666;">${rotaAtual.destinoDesc}</p>
+                <p style="color:red;"><strong>${PARADA_PRF.motivo}</strong></p>
             `;
         }
     }
 
-    // ================= BUSCAR ROTA REAL =================
+    // ================= ROTA =================
     async function buscarRotaReal(start, end) {
 
-        // 🔹 Corrigido: OSRM precisa de [LNG,LAT]
-        const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
+        try {
+            const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
 
-        const data = await fetch(url).then(r => r.json());
+            const data = await fetch(url).then(r => r.json());
 
-        // 🔹 Mapeia para [LAT,LNG] para o Leaflet
-        fullRoute = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-
-        indiceInicio = 0; // começa do início real
+            fullRoute = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        } catch (e) {
+            // fallback linha reta
+            fullRoute = [start, end];
+        }
     }
 
+    // ================= MAPA =================
     function iniciarMapa() {
 
-        map = L.map('map', { zoomControl: false }).setView(fullRoute[0], 5);
+        map = L.map('map', { zoomControl: false }).setView(PARADA_PRF.coordenada, 6);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; CartoDB',
             maxZoom: 18
         }).addTo(map);
 
+        // rota desenhada
         polyline = L.polyline(fullRoute, {
             color: '#2563eb',
             weight: 5
         }).addTo(map);
 
+        // 🚚 Caminhão parado na PRF
         const caminhaoIcon = L.divIcon({
-            className: 'custom-marker',
             html: '<div style="font-size:35px;">🚚</div>',
+            className: '',
             iconSize: [40,40],
             iconAnchor: [20,20]
         });
 
-        carMarker = L.marker(fullRoute[0], { icon: caminhaoIcon }).addTo(map);
+        carMarker = L.marker(PARADA_PRF.coordenada, { icon: caminhaoIcon }).addTo(map);
+
+        // 🚔 PRF
+        const prfIcon = L.divIcon({
+            html: '<div style="font-size:30px;">🚔</div>',
+            className: '',
+            iconSize: [40,40],
+            iconAnchor: [20,20]
+        });
+
+        L.marker(PARADA_PRF.coordenada, { icon: prfIcon })
+            .addTo(map)
+            .bindPopup(`<b>${PARADA_PRF.nome}</b><br>${PARADA_PRF.motivo}`)
+            .openPopup();
 
         iniciarMovimento();
     }
 
-    // ================= MOVIMENTO REAL =================
-
+    // ================= MOVIMENTO =================
     function iniciarMovimento() {
-
-        const keyStorage = CHAVE_INICIO + '_' + localStorage.getItem('codigoAtivo');
-        const inicioSalvo = parseInt(localStorage.getItem(keyStorage));
-
-        const tempoTotal = TEMPO_VIAGEM_TOTAL_HORAS * 3600000;
-
-        loopInterval = setInterval(() => {
-
-            const agora = Date.now();
-
-            // 🔥 cálculo baseado no tempo real (não reinicia)
-            const progresso = (agora - inicioSalvo) / tempoTotal;
-
-            if (progresso >= 1) {
-                carMarker.setLatLng(fullRoute[fullRoute.length - 1]);
-                clearInterval(loopInterval);
-                return;
-            }
-
-            const posIndex = Math.floor(progresso * (fullRoute.length - 1));
-            const pos = fullRoute[posIndex];
-
-            carMarker.setLatLng(pos);
-            map.panTo(pos);
-
-        }, 2000);
+        // 🚫 BLOQUEADO
+        console.log("Veículo retido na PRF - não se move");
     }
 
 });
