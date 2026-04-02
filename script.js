@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // DATA FIXA: O caminhão saiu dia 31/03/2026 às 08:00:00 da manhã
     // Nota: No JavaScript, o mês começa do zero (Janeiro = 0, Fevereiro = 1, Março = 2)
-    const DATA_SAIDA_FIXA = new Date(2026, 2, 31, 8, 0, 0).getTime();
+    cconst DATA_SAIDA_FIXA = Date.now();
 
     let map;
     let fullRoute = [];
