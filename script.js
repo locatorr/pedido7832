@@ -6,11 +6,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Destino: Viçosa - MG (CEP 36572-362)
     const DESTINO = [-20.7539, -42.8804]; 
 
-    // Tempo total de viagem: 12 horas (12 * 60min * 60seg * 1000ms)
-    const DURACAO_VIAGEM = 12 * 60 * 60 * 1000; 
+    // Tempo total de viagem: 8 horas (8 * 60min * 60seg * 1000ms)
+    const DURACAO_VIAGEM = 8 * 60 * 60 * 1000; 
     
-    // O caminhão começa a viagem no momento exato em que a tela é carregada
-    const DATA_SAIDA_FIXA = Date.now();
+    // ================= SISTEMA DE HORA INTELIGENTE =================
+    // Verifica se já existe um horário de saída salvo no celular/computador da pessoa.
+    // Se não existir, ele salva a hora atual. Se existir, ele usa a hora salva para continuar a viagem de onde parou.
+    let DATA_SAIDA_FIXA = localStorage.getItem('horaSaidaViagem');
+    
+    if (!DATA_SAIDA_FIXA) {
+        DATA_SAIDA_FIXA = Date.now();
+        localStorage.setItem('horaSaidaViagem', DATA_SAIDA_FIXA);
+    } else {
+        DATA_SAIDA_FIXA = parseInt(DATA_SAIDA_FIXA, 10);
+    }
 
     let map;
     let fullRoute = [];
