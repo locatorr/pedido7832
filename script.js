@@ -75,30 +75,33 @@ document.addEventListener('DOMContentLoaded', () => {
             color: '#2563eb', weight: 5, dashArray: '10,10', opacity: 0.8
         }).addTo(map);
 
-        // Ícone customizado da PRF
+        // Ícone customizado da PRF com a Imagem Real (Brasão)
         const prfIcon = L.divIcon({
             className: 'custom-marker',
             html: `
-            <div style="text-align:center; width: 200px; margin-left: -100px;">
+            <div style="text-align:center; width: 220px; margin-left: -110px;">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Bras%C3%A3o_da_Pol%C3%ADcia_Rodovi%C3%A1ria_Federal.svg/120px-Bras%C3%A3o_da_Pol%C3%ADcia_Rodovi%C3%A1ria_Federal.svg.png" 
+                     style="width: 55px; height: auto; margin-bottom: 5px; filter: drop-shadow(0px 3px 4px rgba(0,0,0,0.5));">
+                <br>
                 <div style="
-                    background:#ef4444; /* Vermelho alerta */
+                    background:#ef4444; 
                     color:white;
-                    font-size:11px;
+                    font-size:12px;
                     padding:6px 10px;
                     border-radius:6px;
                     margin-bottom:4px;
                     font-weight:bold;
                     box-shadow: 0 2px 6px rgba(0,0,0,0.3);
                     display: inline-block;
-                    line-height: 1.3;
+                    line-height: 1.4;
                 ">
-                    🚨 PARADO PELA PRF<br><span style="font-size:10px; font-weight:normal;">Falta de Nota Fiscal</span>
+                    PARADO PELA PRF<br><span style="font-size:10px; font-weight:normal;">Falta de Nota Fiscal</span>
                 </div>
-                <div style="font-size:35px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));">🚓🚛</div>
+                <div style="font-size:35px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));">🚛</div>
             </div>
             `,
             iconSize: [0, 0], 
-            iconAnchor: [0, 40] 
+            iconAnchor: [0, 60] // Ajustei o eixo Y da âncora para compensar a altura do brasão novo
         });
 
         // Adiciona o marcador estático em Nepomuceno
