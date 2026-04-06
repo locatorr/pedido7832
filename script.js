@@ -1,18 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // ================= CONFIGURAÇÕES =================
-    // Origem: Poços de Caldas - MG
-    const ORIGEM = [-21.7878, -46.5613]; 
-    // Destino: Viçosa - MG (CEP 36572-362)
-    const DESTINO = [-20.7539, -42.8804]; 
+    // Origem: Palmas - TO
+    const ORIGEM = [-10.2491, -48.3243]; 
+
+    // Destino: São Paulo - SP
+    const DESTINO = [-23.5505, -46.6333]; 
     
-    // Local da parada (Nepomuceno - MG)
-    const NEPOMUCENO = [-21.2358, -45.2353];
+    // Duração total da entrega: 1 dia (24h)
+    const DURACAO_TOTAL_MS = 24 * 60 * 60 * 1000;
 
     let map;
     let fullRoute = [];
     let prfMarker;
     let polyline;
+    let startTime;
 
     const btnLogin = document.getElementById('btn-login');
     if (btnLogin) {
@@ -62,60 +64,64 @@ document.addEventListener('DOMContentLoaded', () => {
         fullRoute = data.features[0].geometry.coordinates.map(c => [c[1], c[0]]);
     }
 
-    // ================= MAPA E MARCADOR ESTÁTICO =================
+    // ================= MAPA E MOVIMENTO =================
     function iniciarMapa() {
         if (map) return;
         
-        // Centraliza o mapa em Nepomuceno com um zoom mais próximo
-        map = L.map('map', { zoomControl: false }).setView(NEPOMUCENO, 9);
+        map = L.map('map', { zoomControl: false }).setView(ORIGEM, 5);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // Desenha a rota completa
         polyline = L.polyline(fullRoute, {
-            color: '#2563eb', weight: 5, dashArray: '10,10', opacity: 0.8
+            color: '#2563eb', weight: 5, opacity: 0.9
         }).addTo(map);
 
-        // Ícone customizado da PRF com a Imagem Real (Brasão)
         const prfIcon = L.divIcon({
             className: 'custom-marker',
             html: `
-            <div style="text-align:center; width: 220px; margin-left: -110px;">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Bras%C3%A3o_da_Pol%C3%ADcia_Rodovi%C3%A1ria_Federal.svg/120px-Bras%C3%A3o_da_Pol%C3%ADcia_Rodovi%C3%A1ria_Federal.svg.png" 
-                     style="width: 55px; height: auto; margin-bottom: 5px; filter: drop-shadow(0px 3px 4px rgba(0,0,0,0.5));">
-                <br>
+            <div style="text-align:center;">
+                <div style="font-size:34px;">🏍️</div>
                 <div style="
-                    background:#ef4444; 
+                    background:#22c55e;
                     color:white;
-                    font-size:12px;
-                    padding:6px 10px;
-                    border-radius:6px;
-                    margin-bottom:4px;
+                    font-size:11px;
+                    padding:4px 8px;
+                    border-radius:5px;
                     font-weight:bold;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-                    display: inline-block;
-                    line-height: 1.4;
                 ">
-                    PARADO PELA PRF<br><span style="font-size:10px; font-weight:normal;">Falta de Nota Fiscal</span>
+                    EM TRÂNSITO
                 </div>
-                <div style="font-size:35px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));">🚛</div>
             </div>
             `,
-            iconSize: [0, 0], 
-            iconAnchor: [0, 60] // Ajustei o eixo Y da âncora para compensar a altura do brasão novo
+            iconSize: [0, 0],
+            iconAnchor: [0, 20]
         });
 
-        // Adiciona o marcador estático em Nepomuceno
-        prfMarker = L.marker(NEPOMUCENO, { icon: prfIcon }).addTo(map);
-        
+        prfMarker = L.marker(fullRoute[0], { icon: prfIcon }).addTo(map);
+
+        startTime = Date.now();
+        animarVeiculo();
         atualizarStatusBadge();
     }
 
-    // ================= PAINEL DE STATUS =================
+    // ================= ANIMAÇÃO EM TEMPO REAL =================
+    function animarVeiculo() {
+        setInterval(() => {
+            const agora = Date.now();
+            const progresso = Math.min((agora - startTime) / DURACAO_TOTAL_MS, 1);
+            const index = Math.floor(progresso * (fullRoute.length - 1));
+
+            if (fullRoute[index]) {
+                prfMarker.setLatLng(fullRoute[index]);
+            }
+        }, 1000);
+    }
+
+    // ================= STATUS =================
     function atualizarStatusBadge() {
         const badge = document.getElementById('time-badge');
         if (badge) {
-            badge.innerText = "RETIDO PELA PRF EM NEPOMUCENO - MG";
-            badge.style.background = "#ef4444"; // Fundo vermelho
+            badge.innerText = "EM TRANSPORTE • PALMAS-TO ➜ SÃO PAULO-SP";
+            badge.style.background = "#22c55e";
             badge.style.color = "white";
         }
     }
