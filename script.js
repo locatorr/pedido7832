@@ -7,8 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Destino: Paraopeba - MG
     const DESTINO = [-19.2736, -44.4047];
 
-    // Tempo total de viagem: 2 dias
-    const DURACAO_VIAGEM = 2 * 24 * 60 * 60 * 1000;
+    // 📍 Ponto de retenção: Bandeira do Sul - MG
+    const RETENCAO = [-21.7309, -46.3835];
 
     const STORAGE_START_KEY = 'inicio_viagem';
 
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ================= BUSCA NA API =================
     async function buscarRotaNaAPI() {
-        const ORS_TOKEN = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImQzY2QyNmU1ZWNlOTRjZDJhYTBiZDE0NGU5YmFlYzlhIiwiaCI6Im11cm11cjY0In0=";
+        const ORS_TOKEN = "SEU_TOKEN_AQUI";
 
         const start = `${ORIGEM[1]},${ORIGEM[0]}`;
         const end = `${DESTINO[1]},${DESTINO[0]}`;
@@ -74,12 +74,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function iniciarMapa() {
         if (map) return;
 
-        map = L.map('map', { zoomControl: false }).setView(ORIGEM, 9);
+        // 🔴 mapa já inicia na retenção
+        map = L.map('map', { zoomControl: false }).setView(RETENCAO, 12);
 
         L.tileLayer(
             'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
         ).addTo(map);
 
+        // rota continua visível
         polyline = L.polyline(fullRoute, {
             color: '#2563eb',
             weight: 5,
@@ -94,53 +96,26 @@ document.addEventListener('DOMContentLoaded', () => {
             iconAnchor: [15, 30]
         });
 
-        retainedMarker = L.marker(ORIGEM, {
+        // 🔴 caminhão já começa parado na retenção
+        retainedMarker = L.marker(RETENCAO, {
             icon: truckStatusIcon,
             zIndexOffset: 1000
         }).addTo(map);
 
+        // popup informativo
+        retainedMarker
+            .bindPopup("🚫 Retido pela PRF em Bandeira do Sul<br>Motivo: Falta de nota fiscal")
+            .openPopup();
+
         atualizarStatus();
-        animarCaminhao();
-    }
-
-    // ================= ANIMAÇÃO =================
-    function animarCaminhao() {
-
-        let inicio = localStorage.getItem(STORAGE_START_KEY);
-
-        // ✅ mantém o progresso mesmo após atualizar a página
-        if (!inicio) {
-            inicio = Date.now();
-            localStorage.setItem(STORAGE_START_KEY, inicio);
-        } else {
-            inicio = parseInt(inicio);
-        }
-
-        function mover() {
-            const agora = Date.now();
-            const progresso = Math.min((agora - inicio) / DURACAO_VIAGEM, 1);
-
-            const index = Math.floor(progresso * (fullRoute.length - 1));
-            const posicao = fullRoute[index];
-
-            if (retainedMarker && posicao) {
-                retainedMarker.setLatLng(posicao);
-            }
-
-            if (progresso < 1) {
-                requestAnimationFrame(mover);
-            }
-        }
-
-        mover();
     }
 
     // ================= STATUS =================
     function atualizarStatus() {
         const badge = document.getElementById('time-badge');
         if (badge) {
-            badge.innerText = "EM TRÂNSITO";
-            badge.style.background = "#22c55e";
+            badge.innerText = "RETIDO PELA PRF - FALTA DE NOTA FISCAL";
+            badge.style.background = "#dc2626";
             badge.style.color = "white";
         }
     }
