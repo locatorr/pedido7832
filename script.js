@@ -52,10 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
         buscarRotaNaAPI().then(() => {
             if (overlay) overlay.style.display = 'none';
             document.getElementById('info-card').style.display = 'flex';
-
-            // 🔥 FORÇA reinício da rota
-            localStorage.removeItem(STORAGE_START_KEY);
-
             iniciarMapa();
         });
     }
@@ -110,9 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // ================= ANIMAÇÃO =================
     function animarCaminhao() {
 
-        // 🔥 SEMPRE começa do zero
-        const inicio = Date.now();
-        localStorage.setItem(STORAGE_START_KEY, inicio);
+        let inicio = localStorage.getItem(STORAGE_START_KEY);
+
+        // ✅ mantém o progresso mesmo após atualizar a página
+        if (!inicio) {
+            inicio = Date.now();
+            localStorage.setItem(STORAGE_START_KEY, inicio);
+        } else {
+            inicio = parseInt(inicio);
+        }
 
         function mover() {
             const agora = Date.now();
