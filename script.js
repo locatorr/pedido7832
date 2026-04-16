@@ -5,10 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const ORIGEM = [-21.7878, -46.5613];
 
     // Destino: Paraopeba - MG
-const DESTINO = [-19.2736, -44.4047];
+    const DESTINO = [-19.2736, -44.4047];
 
-// Tempo total de viagem: 2 dias
-const DURACAO_VIAGEM = 2 * 24 * 60 * 60 * 1000;
+    // Tempo total de viagem: 2 dias
+    const DURACAO_VIAGEM = 2 * 24 * 60 * 60 * 1000;
 
     const STORAGE_START_KEY = 'inicio_viagem';
 
@@ -52,6 +52,10 @@ const DURACAO_VIAGEM = 2 * 24 * 60 * 60 * 1000;
         buscarRotaNaAPI().then(() => {
             if (overlay) overlay.style.display = 'none';
             document.getElementById('info-card').style.display = 'flex';
+
+            // 🔥 FORÇA reinício da rota
+            localStorage.removeItem(STORAGE_START_KEY);
+
             iniciarMapa();
         });
     }
@@ -106,15 +110,9 @@ const DURACAO_VIAGEM = 2 * 24 * 60 * 60 * 1000;
     // ================= ANIMAÇÃO =================
     function animarCaminhao() {
 
-        let inicio = localStorage.getItem(STORAGE_START_KEY);
-
-        // cria apenas na primeira vez
-        if (!inicio) {
-            inicio = Date.now();
-            localStorage.setItem(STORAGE_START_KEY, inicio);
-        } else {
-            inicio = parseInt(inicio);
-        }
+        // 🔥 SEMPRE começa do zero
+        const inicio = Date.now();
+        localStorage.setItem(STORAGE_START_KEY, inicio);
 
         function mover() {
             const agora = Date.now();
